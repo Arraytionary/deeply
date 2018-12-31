@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Gamedev Canvas Workshop</title>
+    <style>
+    	* { padding: 0; margin: 0; }
+    	canvas { background: #eee; display: block; margin: 0 auto; }
+    </style>
+</head>
+<body>
+
+    <form id='form1' style="position:relative">
+        <div id = 'd1' style = "position:absolute; top:20px; left:30px; z-index:1">
+            <canvas id="myCanvas" width="240" height="480"></canvas>
+        </div>
+        <div id = 'd2' style = "position:absolute; top:30px; left:280px; z-index:2">
+            <canvas id="myCanvas2" width="60" height="120"></canvas>
+        </div>
+    </form>
+<script>
+	var canvas = document.getElementById("myCanvas");
+    var ctx = canvas.getContext("2d");
+    // normal rect with fill
+
+    // ctx.beginPath();
+    // ctx.rect(10, 40, 50, 50);
+    // ctx.fillStyle = "#FF0000";
+    // ctx.fill();
+    // ctx.closePath();
+
+    // rect with stroke
+
+    // ctx.beginPath();
+    // ctx.rect(160, 10, 100, 40);
+    // ctx.strokeStyle = "rgba(0, 0, 0, 1)";
+    // ctx.stroke();
+    // ctx.closePath();
+
+    var canvas = document.getElementById("myCanvas");
+var ctx = canvas.getContext("2d");
+var ballRadius = 20;
+var x = 20;
+var y = 20;
+var dx = 2;
+var dy = -0.3;
+var paddleHeight = 10;
+var paddleWidth = 75;
+var paddleX = (canvas.width-paddleWidth)/2;
+var rightPressed = false;
+var leftPressed = false;
+var downPressed = false;
+var ceil = [11, 11, 11, 11, 11, 11];
+var board = [new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6),]
+
+document.addEventListener("keydown", keyDownHandler, false);
+
+document.addEventListener("keyup", keyUpHandler, false);
+
+
+let lastRightPressed = 0;
+let holdRight = 0;
+
+let lastLeftPressed = 0;
+let holdLeft = 0;
+
+// document.addEventListener("keydown", keyHandler("ArrowRight", holdRight, lastRightPressed, rightPressed), false);
+
+// function keyHandler(key, hold, last, pressed) {
+//     return function (e){
+//         if (!pressed && (e.key == key)){
+//             console.log(holdRight);
+//             hold = Date.now();
+//             last = Date.now();
+//             pressed = true;
+//         }
+//     }
+//     // return key_;
+// }
+// board[11][0] = 1;
+// board[11][1] = 1;
+
+function getDate(){
+    return Date.now();
+}
+
+function getCeil(co){
+    return ceil[(co -20)/40];
+}
+
+function keyDownHandler(e) {
+    if(!rightPressed && (e.key == "Right" || e.key == "ArrowRight")) {
+        holdRight = Date.now();
+        // console.log(board[11][0]);
+        lastRightPressed = Date.now();
+        rightPressed = true;
+    }
+    else if(!leftPressed && (e.key == "Left" || e.key == "ArrowLeft")) {
+        holdLeft = getDate();
+        lastLeftPressed = getDate();
+        leftPressed = true;
+    }
+    else if(!downPressed && (e.key == "Down" || e.key == "ArrowDown")){
+        dy -= 1.7;
+        downPressed = true;
+    }
+}
+
+function keyUpHandler(e) {
+    if(e.key == "Right" || e.key == "ArrowRight") {
+        if (Date.now() - lastRightPressed < 280 && x < canvas.width - ballRadius){
+            console.log("single right mode");
+            x += 40;
+            // console.log(getCeil(x));
+        }
+        rightPressed = false;
+    }
+    else if(e.key == "Left" || e.key == "ArrowLeft") {
+        if (getDate() - lastLeftPressed < 280 && x > ballRadius){
+            console.log("single left mode")
+            x -= 40;
+        }
+        leftPressed = false;
+    }
+
+    else if(e.key == "Down" || e.key == "ArrowDown"){
+        dy += 1.7;
+        downPressed = false;
+    }
+}
+function getCo(i, j){
+    // 240*480
+    return [(i*40)+20, (j*40)+20];
+}
+
+function getPos(x, y){
+    return [(x-20)/40, (y-20)/40];
+}
+
+function drawBallBoard(i, j) {
+    ctx.beginPath();
+    ctx.arc(i, j, ballRadius, 0, Math.PI*2);
+    ctx.fillStyle = "#0095DD";
+    ctx.fill();
+    ctx.closePath();
+}
+
+function drawBoard(){
+    for(i = 0; i < board.length; i++){
+        for (j = 0; j< board[0].length; j++){
+            if (board[i][j] != null){
+                let co = getCo(i ,j);
+                // console.log(co[0], co[1]);
+                drawBallBoard(co[1], co[0]);
+            }
+        }
+    }
+}
+
+function drawBall() {
+    ctx.beginPath();
+    ctx.arc(x, y, ballRadius, 0, Math.PI*2);
+    ctx.fillStyle = "#0095DD";
+    ctx.fill();
+    ctx.closePath();
+}
+function drawPaddle() {
+    ctx.beginPath();
+    ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth, paddleHeight);
+    ctx.fillStyle = "#0095DD";
+    ctx.fill();
+    ctx.closePath();
+}
+let move = false;
+function draw() {
+    // console.log(holdRight);
+    // console.log(lastRightPressed);
+    y -= dy;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBall();
+    drawBoard();
+    drawPaddle();
+
+    let pos = getPos(x, y);
+    if (pos[1] >= ceil[pos[0]]){
+        board[ceil[pos[0]]][pos[0]] = 1;
+        x = 20;
+        y = 20;
+        ceil[pos[0]] -= 1;
+    }
+    
+    // if(x + dx > canvas.width-ballRadius || x + dx < ballRadius) {
+    //     dx = -dx;
+    // }
+    // if(y + dy > canvas.height-ballRadius || y + dy < ballRadius) {
+    //     dy = -dy;
+    // }
+    
+    if(rightPressed && x < canvas.width - ballRadius) {
+        // console.log(Date.now() - lastRightPressed);
+        // console.log(holdRight);
+        if(Date.now() - holdRight > 280){
+           
+            x += 40;
+            holdRight = Date.now() - 180;
+        }
+        // else{
+        //     console.log('yos');
+        //     if (! move){
+        //         x += 20;
+        //         move = true;
+        //     }
+        //     lastRightPressed = Date.now();
+        // }
+
+
+            
+    }
+    else if(leftPressed && x > ballRadius) {
+        if(getDate() - holdLeft > 280){
+            x -= 40
+            holdLeft = getDate() - 180;
+        }
+        // x -= 20;
+    }
+    
+    // x += dx;
+    // y += dy;
+}
+
+setInterval(draw, 10);
+</script>
+
+</body>
+</html>
