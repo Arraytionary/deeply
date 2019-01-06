@@ -15,12 +15,16 @@
             <canvas id="myCanvas" width="240" height="480"></canvas>
         </div>
         <div id = 'd2' style = "position:absolute; top:30px; left:280px; z-index:2">
-            <canvas id="myCanvas2" width="60" height="120"></canvas>
+            <canvas id="myCanvas2" width="60" height="210"></canvas>
         </div>
     </form>
 <script>
 	var canvas = document.getElementById("myCanvas");
     var ctx = canvas.getContext("2d");
+
+    var nextCanvas = document.getElementById("myCanvas2");
+    var nCtx = nextCanvas.getContext("2d");
+
     // normal rect with fill
 
     // ctx.beginPath();
@@ -38,11 +42,21 @@
     // ctx.closePath();
 
     var canvas = document.getElementById("myCanvas");
+var DEFAULT_DATE = Number.MIN_SAFE_INTEGER;
 var ctx = canvas.getContext("2d");
 var ballRadius = 20;
-var x = 20;
+var x = 60;
 var y = 20;
+var x1 = x;
+var y1 = y - 40;
 var dx = 2;
+var topPos = 0;
+
+var p0Color = genColor();
+var p1Color = genColor();
+
+var dx = 0; //for rotate
+
 var dy = -0.3;
 var paddleHeight = 10;
 var paddleWidth = 75;
@@ -50,19 +64,36 @@ var paddleX = (canvas.width-paddleWidth)/2;
 var rightPressed = false;
 var leftPressed = false;
 var downPressed = false;
+var rotatePressed = false;
 var ceil = [11, 11, 11, 11, 11, 11];
 var board = [new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6), new Array(6),]
+
+
+var next0 = [genColor(), genColor()];
+var next1 = [genColor(), genColor()];
+var colorDict = {
+    //blue
+    0:"#6A99D4",
+    //red
+    1:"#F39D9A",
+    //green
+    2:"#CFF3B8",
+    //yellow
+    3:"#FFC633"
+}
 
 document.addEventListener("keydown", keyDownHandler, false);
 
 document.addEventListener("keyup", keyUpHandler, false);
 
 
-let lastRightPressed = 0;
-let holdRight = 0;
+let lastRightPressed = DEFAULT_DATE;
+let holdRight = DEFAULT_DATE;
 
-let lastLeftPressed = 0;
-let holdLeft = 0;
+let lastLeftPressed = DEFAULT_DATE;
+let holdLeft = DEFAULT_DATE;
+
+let lastRotatedPressed = DEFAULT_DATE;
 
 // document.addEventListener("keydown", keyHandler("ArrowRight", holdRight, lastRightPressed, rightPressed), false);
 
@@ -88,6 +119,27 @@ function getCeil(co){
     return ceil[(co -20)/40];
 }
 
+function genColor(){
+    return Math.floor(Math.random() * 4);
+}
+
+function dropNew(){
+    //reset all value and drop new puyo's pair
+        x = 60;
+        y = 20;
+        x1 = x;
+        y1 = y - 40;
+        topPos = 0;
+        dx = 0;
+        // p0Color = genColor();
+        // p1Color = genColor();
+        //make it drop with bottom first
+        p0Color = next0[1];
+        p1Color = next0[0];
+        next0 = next1;
+        next1 = [genColor(), genColor()];
+    }
+
 function keyDownHandler(e) {
     if(!rightPressed && (e.key == "Right" || e.key == "ArrowRight")) {
         holdRight = Date.now();
@@ -104,19 +156,94 @@ function keyDownHandler(e) {
         dy -= 1.7;
         downPressed = true;
     }
+    else if(!rotatePressed && e.key == "z"){
+        console.log("z pressed");
+        // TODO rotate the puyos
+        // let pos1;
+        switch(topPos){
+            case 0:
+                if (isAdjLeft() && isAdjRight()){
+                    //TODO create support double tab
+                    
+                    if (getDate() - lastRotatedPressed < 280){
+                        let prevX = x;
+                        let prevY = y;
+                        x = x1;
+                        y = y1;
+                        x1 = prevX;
+                        y1 = prevY;
+                        lastRotatedPressed = DEFAULT_DATE;
+                        topPos = 2;
+                        // lastRotatedPressed = 0;
+                    }
+                    lastRotatedPressed = getDate();
+                    break;
+                }
+                else{
+                    if (isAdjRight()){
+                        x -= 40;
+                    }
+                    dx = 40;
+                    y1 = y;
+                    topPos = 1;
+                }
+                break;
+            case 1:
+                dx = 0;
+                y1 = y + 40;
+                topPos = 2;
+                break;
+            case 2:
+                pos1 = getPos(x1 - 40, y1);
+                console.log(pos1[1]);
+                console.log(ceil[pos1[0]]);
+                if (isAdjLeft() && isAdjRight()){
+                    if(getDate() - lastRotatedPressed < 280){
+                        let prevX = x;
+                        let prevY = y;
+                        x = x1;
+                        y = y1;
+                        x1 = prevX;
+                        y1 = prevY;
+                        lastRotatedPressed = DEFAULT_DATE;
+                        topPos = 0;
+                    }
+                    lastRotatedPressed = getDate();
+                    break;
+                    
+                }
+                else{
+                    if (isAdjLeft()){
+                        x += 40;
+                    }
+                    dx = -40;
+                    y1 = y;
+                    topPos = 3;
+                    }
+                break;
+            case 3:
+                dx = 0;
+                y1 = y - 40;
+                topPos = 0;
+                break;
+        }
+        // support the double press
+        rotatePressed = true;
+    }
 }
 
 function keyUpHandler(e) {
     if(e.key == "Right" || e.key == "ArrowRight") {
-        if (Date.now() - lastRightPressed < 280 && x < canvas.width - ballRadius){
+        if (Date.now() - lastRightPressed < 150 && !isAdjRight()){
             console.log("single right mode");
             x += 40;
+            x1 = x - 40;
             // console.log(getCeil(x));
         }
         rightPressed = false;
     }
     else if(e.key == "Left" || e.key == "ArrowLeft") {
-        if (getDate() - lastLeftPressed < 280 && x > ballRadius){
+        if (getDate() - lastLeftPressed < 150 && !isAdjLeft()){
             console.log("single left mode")
             x -= 40;
         }
@@ -126,6 +253,11 @@ function keyUpHandler(e) {
     else if(e.key == "Down" || e.key == "ArrowDown"){
         dy += 1.7;
         downPressed = false;
+    }
+
+    else if (e.key == "z"){
+        // lastRotatedPressed = getDate();
+        rotatePressed = false;
     }
 }
 function getCo(i, j){
@@ -137,21 +269,65 @@ function getPos(x, y){
     return [(x-20)/40, (y-20)/40];
 }
 
-function drawBallBoard(i, j) {
+function drawNext(){
+        function drawNBall(i, j, color){
+            nCtx.beginPath();
+            nCtx.arc(i, j, ballRadius, 0, Math.PI*2);
+            nCtx.fillStyle = colorDict[color];
+            nCtx.fill();
+            nCtx.closePath();
+        }
+        drawNBall(30, 40, next0[0]);
+        drawNBall(30, 80, next0[1]);
+        drawNBall(30, 130, next1[0]);
+        drawNBall(30, 170, next1[1]);
+    }
+
+function drawBallBoard(i, j, color) {
     ctx.beginPath();
     ctx.arc(i, j, ballRadius, 0, Math.PI*2);
-    ctx.fillStyle = "#0095DD";
+    ctx.fillStyle = colorDict[color];
     ctx.fill();
     ctx.closePath();
+}
+
+function isAdjLeft(){
+    // adj to other puyo
+    pos0 = getPos(x - 2*ballRadius, y);
+    let adj0 = (pos0[1] >= ceil[pos0[0]])
+
+    pos1 = getPos(x1 - 2*ballRadius, y1);
+    let adj1 = (pos1[1] >= ceil[pos1[0]])
+
+    // adj to border
+    let bAdj0 = x == ballRadius;
+    let bAdj1 = x1 == ballRadius;
+    return adj0 || adj1 || bAdj0 || bAdj1;
+}
+
+function isAdjRight(){
+    pos0 = getPos(x + 2*ballRadius, y);
+    let adj0 = (pos0[1] >= ceil[pos0[0]])
+
+    pos1 = getPos(x1 + 2*ballRadius, y1);
+                //add this boolean to right adj
+    let adj1 = (pos1[1] >= ceil[pos1[0]])
+
+    let bAdj0 = x == canvas.width - ballRadius;
+    let bAdj1 = x1 == canvas.width - ballRadius;
+    return adj0 || adj1 || bAdj0 || bAdj1;
+    // return (x == canvas.width - 2*ballRadius && 
+    // x1 == canvas.width - 2*ballRadius);
 }
 
 function drawBoard(){
     for(i = 0; i < board.length; i++){
         for (j = 0; j< board[0].length; j++){
-            if (board[i][j] != null){
+            let color = board[i][j];
+            if (color != null){
                 let co = getCo(i ,j);
                 // console.log(co[0], co[1]);
-                drawBallBoard(co[1], co[0]);
+                drawBallBoard(co[1], co[0], color);
             }
         }
     }
@@ -160,10 +336,21 @@ function drawBoard(){
 function drawBall() {
     ctx.beginPath();
     ctx.arc(x, y, ballRadius, 0, Math.PI*2);
-    ctx.fillStyle = "#0095DD";
+    ctx.fillStyle = colorDict[p0Color];
     ctx.fill();
     ctx.closePath();
 }
+
+
+
+function drawBall2() {
+    ctx.beginPath();
+    ctx.arc(x1, y1, ballRadius, 0, Math.PI*2);
+    ctx.fillStyle = colorDict[p1Color];
+    ctx.fill();
+    ctx.closePath();
+}
+
 function drawPaddle() {
     ctx.beginPath();
     ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth, paddleHeight);
@@ -173,20 +360,52 @@ function drawPaddle() {
 }
 let move = false;
 function draw() {
+    drawNext();
+
     // console.log(holdRight);
     // console.log(lastRightPressed);
     y -= dy;
+    y1 -= dy
+    x1 = x + dx;
+    // y1 = y-40;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBall();
+    drawBall2();
     drawBoard();
-    drawPaddle();
+    // drawPaddle();
 
-    let pos = getPos(x, y);
-    if (pos[1] >= ceil[pos[0]]){
-        board[ceil[pos[0]]][pos[0]] = 1;
-        x = 20;
-        y = 20;
-        ceil[pos[0]] -= 1;
+    let pos0 = getPos(x, y);
+    let pos1 = getPos(x1, y1);
+
+    if (pos0[1] >= ceil[pos0[0]]){
+        board[ceil[pos0[0]]][pos0[0]] = p0Color;
+        // x = 60;
+        // y = 20;
+        
+
+        ceil[pos0[0]] -= 1;
+        //instantly drop circle1
+        board[ceil[pos1[0]]][pos1[0]] = p1Color;
+        ceil[pos1[0]] -= 1;
+        
+        dropNew();
+    }
+    
+
+    
+    else if(pos1[1] >= ceil[pos1[0]]){
+        board[ceil[pos1[0]]][pos1[0]] = p1Color;
+        ceil[pos1[0]] -= 1;
+
+        //instantly drop circle0
+        board[ceil[pos0[0]]][pos0[0]] = p0Color;
+        // x = 60;
+        // y = 20;
+        
+        ceil[pos0[0]] -= 1;
+        // TODO create new pair
+        // update ceil
+        dropNew();
     }
     
     // if(x + dx > canvas.width-ballRadius || x + dx < ballRadius) {
@@ -196,13 +415,13 @@ function draw() {
     //     dy = -dy;
     // }
     
-    if(rightPressed && x < canvas.width - ballRadius) {
+    if(rightPressed && !isAdjRight()) {
         // console.log(Date.now() - lastRightPressed);
         // console.log(holdRight);
-        if(Date.now() - holdRight > 280){
+        if(Date.now() - holdRight > 150){
            
             x += 40;
-            holdRight = Date.now() - 180;
+            holdRight = Date.now() - 80;
         }
         // else{
         //     console.log('yos');
@@ -216,10 +435,10 @@ function draw() {
 
             
     }
-    else if(leftPressed && x > ballRadius) {
-        if(getDate() - holdLeft > 280){
+    else if(leftPressed && !isAdjLeft()) {
+        if(getDate() - holdLeft > 150){
             x -= 40
-            holdLeft = getDate() - 180;
+            holdLeft = getDate() - 80;
         }
         // x -= 20;
     }
